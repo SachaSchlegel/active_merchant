@@ -37,13 +37,13 @@ module ActiveMerchant #:nodoc:
       # This method commits an authorization
       #
       def authorize(money, creditcard, options = {})
-        # commit(build_authorization(money, creditcard, options))
+        commit(build_authorization(money, creditcard, options))
       end
 
       # This method commits a capture
       #
       def capture(money, authorization, options = {})
-        # commit(build_capture(money, creditcard, options))
+        commit(build_capture(money, authorization, options))
       end
       
       # This method commits a purchase 
@@ -63,11 +63,73 @@ module ActiveMerchant #:nodoc:
       # This method creates an authorization request message
       #
       def build_authorization money, creditcard, options
+        recurring = options[:recurring] || false
+
+        xml = Builder::XmlMarkup.new :indent => 2
+        xml.instruct!
+        xml.tag! 'WIRECARD_BXML', { 'xmlns:xsi' => 'http://www.w3.org/1999/XMLSchema-instance', 'xsi:noNamespaceSchemaLocation' => 'wirecard.xsd' } do
+          xml.tag! 'W_REQUEST' do
+            xml.tag! 'W_JOB' do
+              xml.tag! 'JobID', get_job_id
+              xml.tag! 'BusinessCaseSignature', @options[:business_case_signature]
+              xml.tag! 'FNC_CC_AUTHORIZATION' do
+                xml.tag! 'FunctionID', get_function_id
+                xml.tag! 'CC_TRANSACTION' do
+                  xml.tag! 'TransactionID', (options[:transaction_id] || get_transaction_id)
+                  xml.tag! 'Amount', { :minorunits => 2 }, amount(money)
+                  xml.tag! 'Currency', currency(money)
+                  xml.tag! 'CountryCode', (options[:transaction_country] || TRANSACTION_COUNTRY_CODE)
+                  xml.tag! 'Usage', (options[:transaction_usage] || TRANSACTION_USAGE_DESCRIPTION)
+                  if recurring
+                    if options[:gwuid].blank?
+                      xml.tag! 'RECURRING_TRANSACTION' do
+                        xml.tag! 'Type', 'Initial'
+                      end
+                      add_credit_card xml, credit_card
+                    else
+                      xml.tag! 'RECURRING_TRANSACTION' do
+                        xml.tag! 'Type', 'Repeated'
+                      end
+                    end
+                  else
+                    add_creditcard xml, creditcard
+                  end
+                  if DO_CONTACT_DATA
+                    xml.tag! 'CONTACT_DATA' do
+                      xml.tag! 'IPAddress'
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+
       end
 
       # This method creates the capture request message
       #
-      def build_capture money, creditcard, options
+      def build_capture money, authorization, options
+        xml = Builder::XmlMarkup.new :indent => 2
+        xml.instruct!
+        xml.tag! 'WIRECARD_BXML', { 'xmlns:xsi' => 'http://www.w3.org/1999/XMLSchema-instance', 'xsi:noNamespaceSchemaLocation' => 'wirecard.xsd' } do
+          xml.tag! 'W_REQUEST' do
+            xml.tag! 'W_JOB' do
+              xml.tag! 'JobID', get_job_id
+              xml.tag! 'BusinessCaseSignature', @options[:business_case_signature]
+              xml.tag! 'FNC_CC_CAPTURE_AUTHORIZATION' do
+                xml.tag! 'FunctionID', get_function_id
+                xml.tag! 'CC_TRANSACTION' do
+                  xml.tag! 'TransactionID', (options[:transaction_id] || get_transaction_id)
+                  xml.tag! 'GuWID', authorization
+                  xml.tag! 'Amount', { :minorunits => 2 }, amount(money)
+                  xml.tag! 'Usage', (options[:transaction_usage] || TRANSACTION_USAGE_DESCRIPTION)
+                end
+              end
+            end
+          end
+        end
+
       end
 
       # This method creates the purchase request message
@@ -150,6 +212,13 @@ module ActiveMerchant #:nodoc:
         puts response_hash.inspect
         puts "done."
         
+        success = authorization = message = nil
+
+        # A typical authentication error
+        if raw_response =~ /This is an error page/ then
+          return Response.new(false, 'Authentication Error', {}, { :test => test?, :authorization => nil } )
+        end
+
         # FunctionResult can have:
         # * ACK (acknowledgment)
         # * NOK (not OK)
@@ -157,12 +226,15 @@ module ActiveMerchant #:nodoc:
 
         success = response_hash[:FunctionResult] == 'ACK' ? true : false
 
-        authorization = nil
         if success
-          authorization = response_hash[:AuthorizationCode]
+          message = response_hash[:Info]
+          # not sure what AuthorizationCode is used for.
+          # authorization = response_hash[:AuthorizationCode]
+          authorization = response_hash[:GuWID]
+        else
+          message = response_hash[:Message]
         end
 
-        message = response_hash[:Info]
         Response.new(success, message, response_hash, { :test => test?, :authorization => authorization } )
       end
 

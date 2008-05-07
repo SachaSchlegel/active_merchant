@@ -20,34 +20,33 @@ class RemoteWirecardTest < Test::Unit::TestCase
     }
   end
 
-
   def test_successful_purchase
     assert response = @gateway.purchase(@amount, @credit_card, @options)
     assert_success response
     assert_equal 'THIS IS A DEMO TRANSACTION USING CREDIT CARD NUMBER 420000****0000. NO REAL MONEY WILL BE TRANSFERED.', response.message
   end
 
-=begin  
   def test_unsuccessful_purchase
     assert response = @gateway.purchase(@amount, @declined_card, @options)
     assert_failure response
-    assert_equal 'REPLACE WITH FAILED PURCHASE MESSAGE', response.message
+    assert_equal 'Credit card number invalid.', response.message
   end
 
   def test_authorize_and_capture
     amount = @amount
     assert auth = @gateway.authorize(amount, @credit_card, @options)
     assert_success auth
-    assert_equal 'Success', auth.message
+    assert_equal 'THIS IS A DEMO TRANSACTION USING CREDIT CARD NUMBER 420000****0000. NO REAL MONEY WILL BE TRANSFERED.', auth.message
     assert auth.authorization
     assert capture = @gateway.capture(amount, auth.authorization)
     assert_success capture
+    assert_equal 'THIS IS A DEMO TRANSACTION USING CREDIT CARD NUMBER 420000****0000. NO REAL MONEY WILL BE TRANSFERED.', auth.message
   end
 
   def test_failed_capture
     assert response = @gateway.capture(@amount, '')
     assert_failure response
-    assert_equal 'REPLACE WITH GATEWAY FAILURE MESSAGE', response.message
+    assert_equal 'Content of GuWID is not according to the given content restrictions.', response.message
   end
 
   def test_invalid_login
@@ -58,8 +57,10 @@ class RemoteWirecardTest < Test::Unit::TestCase
               )
     assert response = gateway.purchase(@amount, @credit_card, @options)
     assert_failure response
-    assert_equal 'REPLACE WITH FAILURE MESSAGE', response.message
+    assert_equal 'Authentication Error', response.message
   end
 
-=end
+  # more tests are required
+  # recurring tests
+
 end
