@@ -3,6 +3,10 @@ require File.dirname(__FILE__) + '/../../test_helper'
 class RemoteWirecardTest < Test::Unit::TestCase
   
   def setup
+    # WireCard requires a user to provide the IP address of server
+    #
+    # A TestAccount can be created at WireCard.
+
     @gateway = WirecardGateway.new(fixtures(:wirecard))
     
     @amount = 100
