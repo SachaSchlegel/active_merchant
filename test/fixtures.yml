@@ -275,3 +275,8 @@ viaklix:
   login: LOGIN
   password: PASSWORD
   user: USER
+
+wirecard:
+  login: '56500'
+  password: 'TestXAPTER'
+  business_case_signature: '56500'
