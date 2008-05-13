@@ -1,0 +1,11 @@
+Added WireCard (http://www.wirecard.com) Gateway.
+
+Remote tests working
+Single Unit Test.
+
+WireCard requires a fixed IP address for remote test.
+
+GitHub SourceCode: http://github.com/SachaSchlegel/active_merchant/tree/master
+
+Author Sacha Schlegel
+Thanks to Till Vollmer (MindMeister) for code snippets
