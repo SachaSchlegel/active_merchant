@@ -235,7 +235,7 @@ module ActiveMerchant #:nodoc:
           message = response_hash[:Message]
         end
 
-        Response.new(success, message, response_hash, { :test => test?, :authorization => authorization } )
+        Response.new(success, message, response_hash, { :test => test?, :authorization => authorization, :fraud_review => raw_response } )
       end
 
       def add_creditcard(xml, creditcard)
