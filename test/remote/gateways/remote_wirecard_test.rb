@@ -62,20 +62,40 @@ class RemoteWirecardTest < Test::Unit::TestCase
     assert_equal 'Content of GuWID is not according to the given content restrictions.', response.message
   end
 
-
   def test_successful_initial_recurring
+    @options[:initial_request] = true
+    assert response = @gateway.recurring(@amount, @credit_card, @options)
+    assert_success response
+    assert_equal 'THIS IS A DEMO TRANSACTION USING CREDIT CARD NUMBER 420000****0000. NO REAL MONEY WILL BE TRANSFERED.', response.message
   end
 
   def test_failed_initial_recurring
+    @options[:initial_request] = true
+    assert response = @gateway.recurring(@amount, @declined_card, @options)
+    assert_failure response
+    assert_equal "Credit card number invalid.", response.message
   end
+
 
   def test_successful_repeated_recurring
+    @options[:initial_request] = true
+    assert response = @gateway.recurring(@amount, @credit_card, @options)
+    assert_success response
+    @options[:initial_request] = false
+    @options[:guwid] = response.authorization
+    assert response = @gateway.recurring(@amount, @credit_card, @options)
+    assert_success response
+    assert_equal 'THIS IS A DEMO TRANSACTION USING CREDIT CARD NUMBER 420000****0000. NO REAL MONEY WILL BE TRANSFERED.', response.message
   end
 
-  def test_failed_repeated_recurring
-  end
 
-  # more tests are required
-  # recurring tests
+  def test_failed_repeated_recurring_wrong_guwid
+    @options[:initial_request] = false
+    guwid = 'C305830112714411123300'
+    @options[:guwid] =  guwid
+    assert response = @gateway.recurring(@amount, @credit_card, @options)
+    assert_failure response
+    assert_equal "Could not find referenced transaction for GuWID #{guwid}.", response.message
+  end
 
 end

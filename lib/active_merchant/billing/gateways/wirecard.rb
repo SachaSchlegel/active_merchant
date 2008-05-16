@@ -54,8 +54,40 @@ module ActiveMerchant #:nodoc:
 
       # This method commits a recurring message
       #
+      # There are two types of recurring actions
+      # a) the initial request
+      # b) the repeated request
+      # the type must be set in the options attribute
+      #
+      # Initial request
+      # ---------------
+      # * option attribute requirements:
+      #   * :initial_request => true
+      # * requires credit card
+      # * requires money
+      #
+      # -> an authorization request is sent
+      #
+      # Repeated request
+      # ----------------
+      # * option attribute requirements:
+      #   * :initial_request => false
+      #   * :guwid => <number>
+      # * requires money
+      #
+      # -> currently only purchase is supported. A purchase request is sent
+      #
       def recurring(money, creditcard, options)
-        # commit(build_recurring(money, creditcard, options))
+        requires!(options, :initial_request)
+        options[:recurring] = true
+        if options[:initial_request] == true
+          # initial request
+          return commit(build_authorization(money, creditcard, options))
+        else
+          # repeated request
+          requires!(options, :guwid)
+          return commit(build_purchase(money, creditcard, options))
+        end
       end
 
       private
@@ -81,11 +113,11 @@ module ActiveMerchant #:nodoc:
                   xml.tag! 'CountryCode', (options[:country] || DEFAULT_COUNTRY_CODE)
                   xml.tag! 'Usage', (options[:description] || DEFAULT_USAGE_DESCRIPTION)
                   if recurring
-                    if options[:gwuid].blank?
+                    if options[:guwid].blank?
                       xml.tag! 'RECURRING_TRANSACTION' do
                         xml.tag! 'Type', 'Initial'
                       end
-                      add_credit_card xml, credit_card
+                      add_creditcard xml, creditcard
                     else
                       xml.tag! 'RECURRING_TRANSACTION' do
                         xml.tag! 'Type', 'Repeated'
@@ -155,12 +187,13 @@ module ActiveMerchant #:nodoc:
                   xml.tag! 'CountryCode', (options[:country] || DEFAULT_COUNTRY_CODE)
                   xml.tag! 'Usage', (options[:description] || DEFAULT_USAGE_DESCRIPTION)
                   if recurring
-                    if options[:gwuid].blank?
+                    if options[:guwid].blank?
                       xml.tag! 'RECURRING_TRANSACTION' do
                         xml.tag! 'Type', 'Initial'
                       end
-                      add_credit_card xml, credit_card
+                      add_creditcard xml, creditcard
                     else
+                      xml.tag! 'GuWID', options[:guwid]
                       xml.tag! 'RECURRING_TRANSACTION' do
                         xml.tag! 'Type', 'Repeated'
                       end
@@ -181,8 +214,6 @@ module ActiveMerchant #:nodoc:
 
       end
 
-      def build_recurring money, creditcard, options
-      end
 
       # from Net::HTTPHeader.basic_encode method
       def basic_encode account, password
