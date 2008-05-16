@@ -1,9 +1,14 @@
 Added WireCard (http://www.wirecard.com) Gateway.
 
-Remote tests working
-Single Unit Test.
+Supports:
+* authorize
+* capture
+* purchase
+* recurring (uses authorization as initial request and a purchase as repeated request)
 
-WireCard requires a fixed IP address for remote test.
+Unit and Remote Tests provided.
+
+WireCard requires a fixed IP address for production system.
 
 GitHub SourceCode: http://github.com/SachaSchlegel/active_merchant/tree/master
 
