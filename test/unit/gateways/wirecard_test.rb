@@ -1,5 +1,11 @@
 require File.dirname(__FILE__) + '/../../test_helper'
 
+# This is the unit test class for the WireCard Gateway
+#
+# In the test cases the job and transaction ids of the response
+# do not match the job and transaction ids of the request. This
+# is du to the fact that we use dummy response messages.
+#
 class WirecardTest < Test::Unit::TestCase
   def setup
     @gateway = WirecardGateway.new(
@@ -11,11 +17,30 @@ class WirecardTest < Test::Unit::TestCase
     @credit_card = credit_card
     @amount = 100
 
+    # :billing_address => address,
+
     @options = {
       :order_id => '1',
       :billing_address => address,
-      :description => 'Store Purchase'
+      :description => 'Unit Tests of WireCard Gateway Usage',
+      :currency => 'CHF',
+      :country => 'CH'
     }
+  end
+
+  def test_successful_authorize
+    # Default Currency => Euro
+    @options = {
+      :order_id => '1',
+      :billing_address => address,
+      :description => 'Unit Tests of WireCard Gateway Usage'
+    }
+    @gateway.expects(:ssl_post).returns(successful_authorization_response_ack)
+    assert response = @gateway.authorize(@amount, @credit_card, @options)
+    assert_success response
+
+    assert_equal 'C242720181323966504820', response.authorization
+    assert response.test?
   end
 
   def test_successful_purchase
@@ -23,21 +48,56 @@ class WirecardTest < Test::Unit::TestCase
     assert response = @gateway.purchase(@amount, @credit_card, @options)
     assert_success response
 
-    # Replace with authorization number from the successful response
     assert_equal 'C242720181323966504820', response.authorization
     assert response.test?
   end
 
-  # more tests required.
-
-=begin
-  def test_unsuccessful_request
+  def test_failed_purchase
     @gateway.expects(:ssl_post).returns(failed_purchase_response)
     assert response = @gateway.purchase(@amount, @credit_card, @options)
     assert_failure response
+  end
+
+
+  def test_successful_authorize_pending
+    @gateway.expects(:ssl_post).returns(successful_authorization_response_pending)
+    assert response = @gateway.authorize(@amount, @credit_card, @options)
+    assert_success response
+
+    assert_equal 'C242720181323966504820', response.authorization
     assert response.test?
   end
-=end
+
+  def test_failed_authorize
+    @gateway.expects(:ssl_post).returns(failed_authorization_response)
+    assert response = @gateway.purchase(@amount, @credit_card, @options)
+    assert_failure response
+  end
+
+  def test_successful_capture
+    @gateway.expects(:ssl_post).returns(successful_capture_response)
+    assert response = @gateway.authorize(@amount, @credit_card, @options)
+    assert_success response
+
+    assert_equal 'C305830112714411123351', response.authorization
+    assert response.test?
+  end
+
+  def test_failed_capture
+    @gateway.expects(:ssl_post).returns(failed_capture_response)
+    assert response = @gateway.purchase(@amount, @credit_card, @options)
+    assert_failure response
+  end
+
+  def test_supported_countries
+    assert_equal ['DE'], WirecardGateway.supported_countries
+  end
+
+  def test_supported_card_types
+    assert_equal [:visa, :master], WirecardGateway.supported_cardtypes
+  end
+
+  # more tests required.
 
   private
 
@@ -176,7 +236,7 @@ EOF
   end
 
   # Success with PENDING
-  def  successful_authorization_response_pending
+  def successful_authorization_response_pending
     response = <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <WIRECARD_BXML xmlns:xsi="http://www.w3.org/1999/XMLSchema-instance"
@@ -269,7 +329,7 @@ EOF
     response
   end
 
-  def failed_capture_respose
+  def failed_capture_response
     response =<<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <WIRECARD_BXML xmlns:xsi="http://www.w3.org/1999/XMLSchema-instance"

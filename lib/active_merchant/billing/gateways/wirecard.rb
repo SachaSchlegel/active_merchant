@@ -23,8 +23,8 @@ module ActiveMerchant #:nodoc:
       self.default_currency = 'EUR'
 
       # Some default settings.
-      TRANSACTION_USAGE_DESCRIPTION = 'Usage description'
-      TRANSACTION_COUNTRY_CODE = 'DE'
+      DEFAULT_USAGE_DESCRIPTION = 'Default Usage description'
+      DEFAULT_COUNTRY_CODE = 'DE'
       DO_CONTACT_DATA = false
 
       # WireCard uses a business_case_signature so we require it
@@ -45,8 +45,8 @@ module ActiveMerchant #:nodoc:
       def capture(money, authorization, options = {})
         commit(build_capture(money, authorization, options))
       end
-      
-      # This method commits a purchase 
+
+      # This method commits a purchase
       #
       def purchase(money, creditcard, options = {})
         commit(build_purchase(money, creditcard, options))
@@ -77,9 +77,9 @@ module ActiveMerchant #:nodoc:
                 xml.tag! 'CC_TRANSACTION' do
                   xml.tag! 'TransactionID', (options[:transaction_id] || get_transaction_id)
                   xml.tag! 'Amount', { :minorunits => 2 }, amount(money)
-                  xml.tag! 'Currency', currency(money)
-                  xml.tag! 'CountryCode', (options[:transaction_country] || TRANSACTION_COUNTRY_CODE)
-                  xml.tag! 'Usage', (options[:transaction_usage] || TRANSACTION_USAGE_DESCRIPTION)
+                  xml.tag! 'Currency', (options[:currency] || default_currency)
+                  xml.tag! 'CountryCode', (options[:country] || DEFAULT_COUNTRY_CODE)
+                  xml.tag! 'Usage', (options[:description] || DEFAULT_USAGE_DESCRIPTION)
                   if recurring
                     if options[:gwuid].blank?
                       xml.tag! 'RECURRING_TRANSACTION' do
@@ -123,7 +123,9 @@ module ActiveMerchant #:nodoc:
                   xml.tag! 'TransactionID', (options[:transaction_id] || get_transaction_id)
                   xml.tag! 'GuWID', authorization
                   xml.tag! 'Amount', { :minorunits => 2 }, amount(money)
-                  xml.tag! 'Usage', (options[:transaction_usage] || TRANSACTION_USAGE_DESCRIPTION)
+                  xml.tag! 'Currency', (options[:currency] || default_currency)
+                  xml.tag! 'CountryCode', (options[:country] || DEFAULT_COUNTRY_CODE)
+                  xml.tag! 'Usage', (options[:description] || DEFAULT_USAGE_DESCRIPTION)
                 end
               end
             end
@@ -149,9 +151,9 @@ module ActiveMerchant #:nodoc:
                 xml.tag! 'CC_TRANSACTION' do
                   xml.tag! 'TransactionID', (options[:transaction_id] || get_transaction_id)
                   xml.tag! 'Amount', { :minorunits => 2 }, amount(money)
-                  xml.tag! 'Currency', currency(money)
-                  xml.tag! 'CountryCode', (options[:transaction_country] || TRANSACTION_COUNTRY_CODE)
-                  xml.tag! 'Usage', (options[:transaction_usage] || TRANSACTION_USAGE_DESCRIPTION)
+                  xml.tag! 'Currency', (options[:currency] || default_currency)
+                  xml.tag! 'CountryCode', (options[:country] || DEFAULT_COUNTRY_CODE)
+                  xml.tag! 'Usage', (options[:description] || DEFAULT_USAGE_DESCRIPTION)
                   if recurring
                     if options[:gwuid].blank?
                       xml.tag! 'RECURRING_TRANSACTION' do
@@ -176,7 +178,7 @@ module ActiveMerchant #:nodoc:
             end
           end
         end
-        
+
       end
 
       def build_recurring money, creditcard, options
@@ -211,7 +213,7 @@ module ActiveMerchant #:nodoc:
         puts "Response Hash:"
         puts response_hash.inspect
         puts "done."
-        
+
         success = authorization = message = nil
 
         # A typical authentication error
@@ -224,7 +226,16 @@ module ActiveMerchant #:nodoc:
         # * NOK (not OK)
         # * PENDING (seems to be a success ...)
 
-        success = response_hash[:FunctionResult] == 'ACK' ? true : false
+        success = case response_hash[:FunctionResult]
+                  when 'ACK'
+                    true
+                  when 'PENDING'
+                    true
+                  when 'NOK'
+                    false
+                  else
+                    false
+                  end
 
         if success
           message = response_hash[:Info]
