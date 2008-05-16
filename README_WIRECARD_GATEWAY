@@ -8,6 +8,10 @@ Supports:
 
 Unit and Remote Tests provided.
 
+TODO:
+* provide credit card owner names with credit card details
+* allow further settings in the XML messages
+
 WireCard requires a fixed IP address for production system.
 
 GitHub SourceCode: http://github.com/SachaSchlegel/active_merchant/tree/master
