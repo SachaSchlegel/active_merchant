@@ -56,6 +56,7 @@ module ActiveMerchant #:nodoc:
       #
       # There are two types of recurring actions
       # a) the initial request
+      #    -> can be an authorization or directly a purchase (user chooses through options)
       # b) the repeated request
       # the type must be set in the options attribute
       #
@@ -63,6 +64,7 @@ module ActiveMerchant #:nodoc:
       # ---------------
       # * option attribute requirements:
       #   * :initial_request => true
+      #   * :action => [ :purchase | :authorize ] # defaults to :authorize
       # * requires credit card
       # * requires money
       #
@@ -82,7 +84,11 @@ module ActiveMerchant #:nodoc:
         options[:recurring] = true
         if options[:initial_request] == true
           # initial request
-          return commit(build_authorization(money, creditcard, options))
+          if options[:action] == :purchase
+            return commit(build_purchase(money, creditcard, options))
+          else
+            return commit(build_authorization(money, creditcard, options))
+          end
         else
           # repeated request
           requires!(options, :guwid)
@@ -168,6 +174,11 @@ module ActiveMerchant #:nodoc:
 
       # This method creates the purchase request message
       #
+      # This can be
+      # * a single purchase or
+      # * a recurring purchase where
+      #   * it can be the initial recurring purchase
+      #   * or a repeated purchase
       def build_purchase money, creditcard, options
         recurring = options[:recurring] || false
 

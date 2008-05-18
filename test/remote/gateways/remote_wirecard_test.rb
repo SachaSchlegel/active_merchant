@@ -62,8 +62,17 @@ class RemoteWirecardTest < Test::Unit::TestCase
     assert_equal 'Content of GuWID is not according to the given content restrictions.', response.message
   end
 
-  def test_successful_initial_recurring
+  # Default initial recurring is a authorize action
+  def test_successful_initial_recurring_authorize
     @options[:initial_request] = true
+    assert response = @gateway.recurring(@amount, @credit_card, @options)
+    assert_success response
+    assert_equal 'THIS IS A DEMO TRANSACTION USING CREDIT CARD NUMBER 420000****0000. NO REAL MONEY WILL BE TRANSFERED.', response.message
+  end
+
+  def test_successful_initial_recurring_purchase
+    @options[:initial_request] = true
+    @options[:action] = :purchase
     assert response = @gateway.recurring(@amount, @credit_card, @options)
     assert_success response
     assert_equal 'THIS IS A DEMO TRANSACTION USING CREDIT CARD NUMBER 420000****0000. NO REAL MONEY WILL BE TRANSFERED.', response.message
